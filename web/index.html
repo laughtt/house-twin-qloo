@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Duck Host</title>
+<meta name="description" content="House Twin + Qloo: a home robot that knows the rooms, and what each person in them will like.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E8EDF0; --sheet:#F6F8F9; --ink:#17223A; --ink-2:#4A5872; --line:#B9C4CE; --grid:#D7DFE5;
+  --duck:#F2B705; --beak:#E8711C; --glow:#FFD866;
+  --p1:#C2345B; --p2:#0F7C74; --p3:#5A45C8;
+  --room:#EEF2F4; --room-dim:#E1E7EB;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#131D31; --sheet:#1A263D; --ink:#E7EDF4; --ink-2:#A7B4C7; --line:#3A4A66; --grid:#22304A;
+    --duck:#F5C21B; --beak:#F08A3A; --glow:#FFCF4D;
+    --p1:#F06B8E; --p2:#3CC2B6; --p3:#9C8BFF;
+    --room:#1F2C45; --room-dim:#18233A; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131D31; --sheet:#1A263D; --ink:#E7EDF4; --ink-2:#A7B4C7; --line:#3A4A66; --grid:#22304A;
+  --duck:#F5C21B; --beak:#F08A3A; --glow:#FFCF4D;
+  --p1:#F06B8E; --p2:#3CC2B6; --p3:#9C8BFF;
+  --room:#1F2C45; --room-dim:#18233A; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 18px/1.55 "Atkinson Hyperlegible",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-optical-sizing:auto;line-height:1.05;margin:0}
+h1{font-size:clamp(2.3rem,5.2vw,4.3rem);font-weight:800;letter-spacing:-.025em;max-width:13ch}
+h2{font-size:clamp(1.75rem,3.4vw,2.6rem);font-weight:750;letter-spacing:-.02em;max-width:22ch}
+h3{font-size:1.25rem;font-weight:700}
+p{margin:0}
+a{color:inherit}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--p3);outline-offset:3px;border-radius:6px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+.top{display:flex;justify-content:space-between;align-items:center;padding:18px 0}
+.brand{display:flex;gap:10px;align-items:center;font:750 1.15rem "Bricolage Grotesque",sans-serif;text-decoration:none}
+.brand svg{width:34px;height:34px}
+.links{display:flex;gap:16px;align-items:center}
+.links a{font-weight:700;text-decoration-thickness:2px;text-underline-offset:4px}
+.theme{border:1.5px solid var(--line);background:var(--sheet);border-radius:999px;padding:6px 14px;font-size:.9rem}
+
+/* hero */
+.hero{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:40px;align-items:center;padding:28px 0 72px}
+.lede{font-size:1.2rem;color:var(--ink-2);max-width:40ch;margin-top:20px}
+.bubble{margin-top:30px;display:flex;gap:14px;align-items:flex-start}
+.avatar{flex:none;width:46px;height:46px;border-radius:50%;background:var(--p1);color:#fff;display:grid;place-items:center;font-weight:700}
+.say{background:var(--sheet);border:1.5px solid var(--line);border-radius:4px 18px 18px 18px;padding:12px 16px;min-height:76px;max-width:34ch}
+.say .es{font-weight:700;min-height:1.55em}
+.say .en{color:var(--ink-2);font-size:.92rem;opacity:0;transition:opacity .4s}
+.say.done .en{opacity:1}
+.caret{display:inline-block;width:2px;height:1.1em;background:var(--ink);vertical-align:-2px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.trace{list-style:none;margin:22px 0 0;padding:0;font:500 .86rem/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink-2)}
+.trace li{display:flex;gap:10px;padding:5px 0;border-top:1px dashed var(--line);opacity:0;transform:translateY(4px);transition:opacity .35s,transform .35s}
+.trace li.on{opacity:1;transform:none}
+.trace b{color:var(--ink);font-weight:700}
+.trace .q{color:var(--p2)}
+.replay{margin-top:22px;border:0;background:var(--ink);color:var(--paper);border-radius:999px;padding:11px 20px;font-weight:700;display:inline-flex;gap:8px;align-items:center}
+.replay svg{width:16px;height:16px}
+
+.planbox{position:relative;background:var(--sheet);border:1.5px solid var(--line);border-radius:6px;padding:10px;box-shadow:8px 8px 0 var(--grid)}
+.planbox svg.plan{display:block;width:100%;height:auto}
+.plan .gridbg{fill:url(#grid)}
+.plan .room{fill:var(--room);stroke:none;transition:fill .8s}
+.plan .room.lit{fill:var(--glow)}
+.plan .wall{stroke:var(--ink);stroke-width:11;stroke-linecap:square}
+.plan .door{fill:none;stroke:var(--ink-2);stroke-width:2.5}
+.plan .obj{fill:none;stroke:var(--ink-2);stroke-width:2.5}
+.plan .tv{fill:var(--ink);transition:fill .5s}
+.plan .tv.on{fill:var(--duck)}
+.plan .beam{fill:var(--glow);opacity:0;transition:opacity .8s}
+.plan .beam.on{opacity:.55}
+.plan .lbl{font:700 22px "Atkinson Hyperlegible",sans-serif;fill:var(--ink-2);text-anchor:middle}
+.plan .olbl{font:400 15px "Atkinson Hyperlegible",sans-serif;fill:var(--ink-2);text-anchor:middle;opacity:.8}
+.plan.evening .in-living{fill:#17223A;opacity:1}
+.plan .trail{fill:none;stroke:var(--duck);stroke-width:5;stroke-dasharray:2 12;stroke-linecap:round}
+.plan .ent{fill:none;stroke:var(--p2);stroke-width:4}
+.planbox figcaption{font-size:.8rem;color:var(--ink-2);padding:8px 6px 2px}
+.pick{position:absolute;left:18px;top:18px;width:min(290px,70%);background:var(--sheet);border:2px solid var(--ink);border-radius:6px;padding:14px 16px;box-shadow:5px 5px 0 var(--duck);opacity:0;transform:translateY(10px) rotate(-1deg);transition:opacity .5s,transform .5s;pointer-events:none}
+.pick.on{opacity:1;transform:rotate(-1deg)}
+.pick small{display:block;color:var(--ink-2);font-size:.8rem}
+.pick strong{display:block;font:750 1.45rem "Bricolage Grotesque",sans-serif;margin:2px 0 8px}
+
+.bars{display:grid;gap:5px}
+.bar{display:grid;grid-template-columns:3.4em 1fr 2.2em;gap:8px;align-items:center;font-size:.85rem}
+.bar i{display:block;height:9px;border-radius:5px;background:var(--grid);overflow:hidden}
+.bar i u{display:block;height:100%;width:0;border-radius:5px;transition:width .7s cubic-bezier(.2,.8,.2,1)}
+.bar span:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+
+/* sections */
+section{padding:84px 0;border-top:1.5px solid var(--line)}
+.sechead{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:end;margin-bottom:40px}
+.sechead p{color:var(--ink-2);max-width:48ch}
+.why{margin-top:28px;border-left:4px solid var(--duck);padding:4px 0 4px 16px;max-width:62ch}
+.why b{display:block}
+.note{font-size:.82rem;color:var(--ink-2);margin-top:14px}
+
+/* demo 1 */
+.people{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.person{background:var(--sheet);border:1.5px solid var(--line);border-top:6px solid var(--c);border-radius:6px;padding:16px}
+.person h3{display:flex;justify-content:space-between;align-items:baseline}
+.person h3 span{font:400 .9rem "Atkinson Hyperlegible",sans-serif;color:var(--ink-2)}
+.person p{font-size:.85rem;color:var(--ink-2);margin:6px 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1.5px solid var(--line);background:transparent;border-radius:999px;padding:5px 12px;font-size:.88rem}
+.chip[aria-pressed="true"]{background:var(--c);border-color:var(--c);color:#fff}
+.board{margin-top:26px;background:var(--sheet);border:1.5px solid var(--line);border-radius:6px;padding:8px 18px}
+.row{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,2fr) 4.5em;gap:20px;align-items:center;padding:12px 0;border-top:1px solid var(--grid)}
+.row:first-child{border-top:0}
+.row .t{font-weight:700}
+.row .t small{display:block;font-weight:400;color:var(--ink-2);font-size:.8rem}
+.row .min{text-align:right;font:750 1.5rem "Bricolage Grotesque",sans-serif;font-variant-numeric:tabular-nums}
+.row .min small{display:block;font:400 .72rem "Atkinson Hyperlegible",sans-serif;color:var(--ink-2)}
+.row.best{position:relative}
+.row.best .t::before{content:"";display:inline-block;width:14px;height:14px;margin-right:8px;border-radius:50%;background:var(--duck);box-shadow:0 0 0 4px color-mix(in srgb,var(--duck) 35%,transparent);vertical-align:-1px}
+.row.base{border:2px dashed var(--line);border-radius:6px;padding:12px;margin:14px -12px 8px}
+.row.base .t small{color:var(--p1)}
+
+/* demo 2 */
+.door{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+.map{background:var(--sheet);border:1.5px solid var(--line);border-radius:6px;padding:8px}
+.map svg{display:block;width:100%;height:auto}
+.map .street{stroke:var(--grid);stroke-width:10;fill:none;stroke-linecap:round}
+.map .ring{fill:none;stroke:var(--line);stroke-dasharray:3 6}
+.map .rl{font:400 12px "Atkinson Hyperlegible",sans-serif;fill:var(--ink-2)}
+.map .pl circle{fill:var(--ink-2);transition:r .6s,fill .6s}
+.map .pl.top circle{fill:var(--p1)}
+.map .pl text{font:700 13px "Atkinson Hyperlegible",sans-serif;fill:var(--ink);opacity:0;transition:opacity .4s}
+.map .pl.top text,.map.near .pl.close text{opacity:1}
+.map.near .pl circle{fill:var(--ink-2)}
+.seg{display:inline-flex;border:1.5px solid var(--ink);border-radius:999px;padding:3px;margin-bottom:16px}
+.seg button{border:0;background:transparent;border-radius:999px;padding:7px 16px;font-size:.92rem}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.places{list-style:none;margin:0;padding:0}
+.places li{display:grid;grid-template-columns:2em minmax(0,1fr) 4.2em 6em;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--grid)}
+.places .n{font:750 1.1rem "Bricolage Grotesque",sans-serif;color:var(--ink-2)}
+.places .nm{font-weight:700}
+.places .nm small{display:block;font-weight:400;font-size:.8rem;color:var(--ink-2)}
+.places .d{font-size:.85rem;color:var(--ink-2);text-align:right}
+.places i{display:block;height:8px;border-radius:4px;background:var(--grid)}
+.places i u{display:block;height:100%;border-radius:4px;background:var(--p1)}
+
+/* demo 3 */
+.moods{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:28px;align-items:center}
+.moodcard{background:var(--sheet);border:1.5px solid var(--line);border-radius:6px;padding:20px}
+.moodcard .room-n{font:750 1.6rem "Bricolage Grotesque",sans-serif}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+.tags span{border:1.5px solid var(--ink);border-radius:4px;padding:2px 9px;font-size:.85rem}
+.swatch{display:flex;gap:12px;align-items:center;font-size:.9rem;color:var(--ink-2)}
+.swatch b{width:38px;height:38px;border-radius:50%;background:var(--sw);box-shadow:0 0 22px 4px var(--sw);transition:background .8s,box-shadow .8s}
+.playing{margin-top:14px;display:flex;gap:10px;align-items:center}
+.eq{display:flex;gap:3px;align-items:flex-end;height:18px}
+.eq b{width:4px;background:var(--p2);border-radius:2px;animation:eq 1s ease-in-out infinite}
+.eq b:nth-child(2){animation-delay:-.4s}.eq b:nth-child(3){animation-delay:-.7s}.eq b:nth-child(4){animation-delay:-.2s}
+@keyframes eq{0%,100%{height:4px}50%{height:18px}}
+
+/* demo 4 */
+.checkin{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+.ladder{list-style:none;margin:0;padding:0;position:relative}
+.ladder li{position:relative;padding:14px 16px 14px 58px;margin-bottom:12px;background:var(--sheet);border:1.5px solid var(--line);border-radius:6px;transition:border-color .4s,transform .4s}
+.ladder li::before{content:attr(data-step);position:absolute;left:14px;top:14px;width:30px;height:30px;border-radius:50%;border:2px solid var(--ink-2);display:grid;place-items:center;font-weight:700;font-size:.85rem}
+.ladder li small{display:block;color:var(--ink-2);font-size:.8rem}
+.ladder li b{font-size:1.1rem}
+.ladder li.now{border-color:var(--ink);border-width:2px;transform:translateX(8px)}
+.ladder li.now::before{background:var(--duck);border-color:var(--ink);color:#17223A}
+.replies{display:flex;gap:10px;margin:16px 0}
+.replies button{border:2px solid var(--ink);background:var(--sheet);border-radius:999px;padding:9px 18px;font-weight:700}
+.replies button.yes{background:var(--ink);color:var(--paper)}
+.profile{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.profile span{background:var(--p1);color:#fff;border-radius:999px;padding:4px 12px;font-size:.85rem;animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(.4);opacity:0}}
+.duckline{display:flex;gap:14px;align-items:center;background:var(--sheet);border:1.5px solid var(--line);border-radius:6px;padding:14px 16px}
+.duckline svg{flex:none;width:58px;height:58px}
+
+/* how */
+.flow{background:var(--sheet);border:1.5px solid var(--line);border-radius:6px;padding:12px;overflow:hidden}
+.flow svg{display:block;width:100%;height:auto}
+.flow .box{fill:var(--paper);stroke:var(--ink);stroke-width:2}
+.flow .key{fill:var(--duck);stroke:var(--ink);stroke-width:2}
+.flow .q{fill:var(--p2);stroke:var(--ink);stroke-width:2}
+.flow text{font:700 15px "Atkinson Hyperlegible",sans-serif;fill:var(--ink)}
+.flow .sub{font-weight:400;font-size:12.5px;fill:var(--ink-2)}
+.flow .qt{fill:#fff}
+.flow .arr{stroke:var(--ink-2);stroke-width:2;fill:none;marker-end:url(#ah)}
+.flow .pulse{fill:var(--p1)}
+.flow .fence{fill:none;stroke:var(--p1);stroke-width:2;stroke-dasharray:8 6}
+.flow .fl{font-size:12.5px;fill:var(--p1)}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-top:22px}
+.split div{background:var(--sheet);border:1.5px solid var(--line);border-radius:6px;padding:18px}
+.split h3{margin-bottom:8px}
+.split ul{margin:0;padding-left:20px}
+.split .no{border-color:var(--p1)}
+
+/* plan */
+.changes{columns:2;column-gap:40px;padding-left:20px;margin:0}
+.changes li{break-inside:avoid;margin-bottom:10px}
+footer{border-top:1.5px solid var(--line);padding:30px 0 50px;font-size:.85rem;color:var(--ink-2)}
+footer .wrap{display:flex;gap:18px;align-items:center}
+footer svg{flex:none;width:52px}
+
+@media (max-width:900px){
+  .hero,.sechead,.door,.moods,.checkin,.split{grid-template-columns:minmax(0,1fr)}
+  .hero{gap:28px}
+  .changes{columns:1}
+}
+@media (max-width:640px){
+  .wrap{padding:0 16px}
+  .people{grid-template-columns:minmax(0,1fr)}
+  .row{grid-template-columns:minmax(0,1fr) 4em;gap:8px 12px}
+  .row .bars{grid-column:1/-1;grid-row:2}
+  .pick{position:static;width:auto;margin-top:10px;transform:none;opacity:.35}
+  .pick.on{opacity:1;transform:none}
+  .places li{grid-template-columns:1.6em minmax(0,1fr) 3.6em;}
+  .places li i{grid-column:2/-1}
+  section{padding:60px 0}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="duck-side" viewBox="0 0 120 120">
+      <path d="M47 92 L44 110 M73 92 L76 110" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="44" cy="100" r="4" fill="var(--ink)"/><circle cx="76" cy="100" r="4" fill="var(--ink)"/>
+      <path d="M36 110h16M68 110h16" stroke="var(--beak)" stroke-width="6" stroke-linecap="round"/>
+      <path d="M22 70c0-20 16-30 38-30 24 0 40 12 40 30 0 16-16 26-40 26S22 86 22 70z" fill="var(--duck)" stroke="var(--ink)" stroke-width="3"/>
+      <path d="M22 66c-8-2-12 4-12 8 6 0 10-2 13-4" fill="var(--duck)" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M44 66c8 8 26 10 38 2" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="74" cy="28" r="20" fill="var(--duck)" stroke="var(--ink)" stroke-width="3"/>
+      <path d="M90 28c10-1 18 2 20 6-4 4-12 5-20 3z" fill="var(--beak)" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/>
+      <circle cx="80" cy="23" r="6" fill="var(--ink)"/><circle cx="82" cy="21" r="2" fill="#fff"/>
+      <path d="M66 9 l2-7" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/><circle cx="68" cy="2" r="2.5" fill="var(--p1)"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="wrap top">
+  <a class="brand" href="#"><svg aria-hidden="true"><use href="#duck-side"/></svg>Duck Host</a>
+  <nav class="links"><a href="https://github.com/laughtt/house-twin-qloo">Code</a><button class="theme" id="theme" type="button">Dark mode</button></nav>
+</header>
+
+<main>
+<div class="wrap hero">
+  <div>
+    <h1>The robot already knows your home. Now it knows who lives there.</h1>
+    <p class="lede">House Twin maps a home from one iPhone walk, and a Microduck robot patrols it by voice. Duck Host adds Qloo: before the duck acts, it asks what each person in the room will actually like, and shows the score.</p>
+    <div class="bubble">
+      <div class="avatar" aria-hidden="true">R</div>
+      <div class="say" id="say"><div class="es"></div><div class="en">"Find something we can all watch tonight." (Rosa, 78)</div></div>
+    </div>
+    <ol class="trace" id="trace">
+      <li><b>heard</b> Omni turns speech into text</li>
+      <li><b>plan</b> patrol → living_room</li>
+      <li><b>tool</b> pick_for(living_room, [Rosa, Ana, Leo], film)</li>
+      <li class="q"><b>Qloo</b> 7 films × 3 people, each scored</li>
+      <li><b>pick</b> <span id="trace-pick">the best lowest score</span></li>
+    </ol>
+    <button class="replay" id="replay" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2v12l11-6z" fill="currentColor"/></svg>Play the walk again</button>
+  </div>
+  <figure class="planbox" style="margin:0">
+    <svg class="plan" id="plan1" viewBox="-40 -40 880 780" role="img" aria-label="Floor plan of the House Twin sample home. The duck walks from the hallway to the living room."></svg>
+    <div class="pick" id="pick" aria-live="polite">
+      <small>Tonight in the living room</small>
+      <strong id="pick-title">Paddington 2</strong>
+      <div class="bars" id="pick-bars"></div>
+    </div>
+    <figcaption>The sample home from House Twin (samples/synth-multi), drawn from its house.json. Scores on this page are illustrative.</figcaption>
+  </figure>
+</div>
+
+<section id="three">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>One room, three tastes</h2>
+      <p>Each person sets a few favourites once. When someone asks for a film, Qloo scores every option for every person, and the duck picks the one whose lowest score is highest. Change a favourite and watch the pick move.</p>
+    </div>
+    <div class="people" id="people"></div>
+    <div class="board" id="board"></div>
+    <div class="why"><b>Why this only works with Qloo</b>A language model can name family films. It can't measure how much Rosa, Ana and Leo will each like one, so it can't show the bars, and it can't prove the pick is fair.</div>
+    <p class="note">The dashed row is a generic "family movie night" pick, scored the same way for comparison. All numbers are illustrative until the live Qloo scoring test passes.</p>
+  </div>
+</section>
+
+<section id="door">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>At the door: what's worth doing nearby</h2>
+      <p>In the hallway, Rosa asks where to have lunch. A map app sorts by distance. Qloo ranks the places near home by how well they fit her taste. For someone who doesn't go out much, the same ranking picks what to order in.</p>
+    </div>
+    <div class="door">
+      <div class="map near" id="map"><svg viewBox="0 0 440 400" id="mapsvg" role="img" aria-label="Map of places around the home"></svg></div>
+      <div>
+        <div class="seg" role="group" aria-label="Sort places">
+          <button type="button" aria-pressed="true" data-mode="near">Nearest first</button>
+          <button type="button" aria-pressed="false" data-mode="fit">Fits Rosa</button>
+        </div>
+        <ol class="places" id="places"></ol>
+        <p class="note">Qloo gets one rounded neighbourhood point and Rosa's favourites as taste IDs. Place names are invented for this page.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="moods">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>Every room gets a mood</h2>
+      <p>The organisers' own example is room lighting that follows mood and taste. Qloo's ambience tags for Rosa's favourites set the light colour and the music in the room the duck is visiting.</p>
+    </div>
+    <div class="moods">
+      <figure class="planbox" style="margin:0"><svg class="plan" id="plan2" viewBox="-40 -40 880 780" role="img" aria-label="Floor plan with the active room lit"></svg></figure>
+      <div>
+        <div class="seg" role="group" aria-label="Time of day" id="slots"></div>
+        <div class="moodcard">
+          <div class="room-n" id="mood-room">Kitchen</div>
+          <div class="tags" id="mood-tags"></div>
+          <div class="swatch" id="mood-sw"><b></b><span id="mood-light">Warm white</span></div>
+          <div class="playing"><span class="eq" aria-hidden="true"><b></b><b></b><b></b><b></b></span><span id="mood-play"></span></div>
+        </div>
+        <p class="note">On its own, a model can roughly guess a mood from favourites, so this is decoration on top of the scores, not the proof.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="checkin">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>The check-in round brings one new thing</h2>
+      <p>House Twin already does check-in rounds for someone living alone. Now each round ends with one suggestion, one step beyond what Rosa already loves, with the reason. She answers by voice, in her own language, and her profile changes.</p>
+    </div>
+    <div class="checkin">
+      <div>
+        <ol class="ladder" id="ladder"></ol>
+      </div>
+      <div>
+        <div class="duckline"><svg aria-hidden="true"><use href="#duck-side"/></svg><p id="duck-say"></p></div>
+        <div class="replies">
+          <button type="button" class="yes" id="yes">"Me gusta"</button>
+          <button type="button" id="no">"No, otra"</button>
+        </div>
+        <h3>Rosa's taste profile</h3>
+        <div class="profile" id="profile"><span>Pedro Infante films</span><span>Columbo</span><span>Buena Vista Social Club</span></div>
+        <p class="note">Only taste IDs are stored, never the recording. "Me gusta" adds the title as a new signal for Qloo.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>How it works</h2>
+      <p>The agent gets two new tools next to patrol and ask_person. The Qloo key and every call live on the House Twin server. The browser and the robot never see the key.</p>
+    </div>
+    <div class="flow">
+      <svg viewBox="0 0 1100 330" role="img" aria-label="Voice goes to the agent; the agent calls patrol and the new Qloo tools on the server; results drive the duck and the page.">
+        <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--ink-2)"/></marker></defs>
+        <rect class="fence" x="300" y="20" width="560" height="290" rx="10"/>
+        <text class="fl" x="316" y="44">House Twin server: the key, profiles and floor plan stay here</text>
+        <rect class="box" x="20" y="120" width="200" height="86" rx="8"/>
+        <text x="40" y="154">Voice or text</text><text class="sub" x="40" y="176">"Busca algo para ver"</text><text class="sub" x="40" y="194">any of 6 languages</text>
+        <rect class="box" x="330" y="120" width="220" height="86" rx="8"/>
+        <text x="350" y="154">Agent (Ultra or Claude)</text><text class="sub" x="350" y="176">reads house.json</text><text class="sub" x="350" y="194">picks rooms and tools</text>
+        <rect class="box" x="610" y="64" width="220" height="58" rx="8"/><text x="630" y="98">patrol · ask_person</text>
+        <rect class="key" x="610" y="140" width="220" height="58" rx="8"/><text x="630" y="166">pick_for(room, people)</text><text class="sub" x="630" y="186">new</text>
+        <rect class="key" x="610" y="216" width="220" height="58" rx="8"/><text x="630" y="242">go_out(kind)</text><text class="sub" x="630" y="262">new</text>
+        <rect class="q" x="900" y="160" width="180" height="96" rx="8"/>
+        <text class="qt" x="920" y="196">Qloo API</text><text class="sub qt" x="920" y="218">taste IDs in,</text><text class="sub qt" x="920" y="236">scores out</text>
+        <rect class="box" x="900" y="40" width="180" height="86" rx="8"/>
+        <text x="920" y="74">Duck walks</text><text class="sub" x="920" y="96">+ result card</text><text class="sub" x="920" y="114">on the hosted page</text>
+        <path class="arr" d="M220 163 H326"/>
+        <path class="arr" d="M550 150 C580 110 590 93 606 93"/>
+        <path class="arr" d="M550 163 H606"/>
+        <path class="arr" d="M550 178 C580 220 590 245 606 245"/>
+        <path class="arr" d="M830 169 H896"/>
+        <path class="arr" d="M830 245 C870 245 870 225 896 225"/>
+        <path class="arr" d="M830 93 H896"/>
+        <path class="arr" d="M990 160 V130"/>
+        <circle class="pulse" r="6"><animateMotion dur="3s" repeatCount="indefinite" path="M222 163 H326 M552 163 H606 M832 169 H896"/></circle>
+      </svg>
+    </div>
+    <div class="split">
+      <div><h3>What Qloo receives</h3><ul><li>Taste IDs for films, shows, artists and places</li><li>One rounded neighbourhood point, for nearby places</li><li>An age group, if the household sets one</li></ul></div>
+      <div class="no"><h3>What never leaves the house server</h3><ul><li>Names, voices and recordings</li><li>Camera frames and depth scans</li><li>The floor plan and device IDs</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section id="plan">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>What Qloo adds to House Twin</h2>
+      <p>House Twin existed before Sep 30. This is the list of what is being added for the Qloo Agentic Hackathon. The baseline is the tag <a href="https://github.com/laughtt/house-twin-qloo/tree/baseline-nebius">baseline-nebius</a> in the repo.</p>
+    </div>
+    <ul class="changes">
+      <li>A server-side Qloo client, with a cache, and the key kept out of the repo and the browser.</li>
+      <li>Two agent tools, pick_for and go_out, alongside patrol and ask_person in agent/language.py.</li>
+      <li>A household file of taste profiles next to house.json, holding Qloo IDs only.</li>
+      <li>A hosted page judges can use with no robot: pick a household, give a command, watch the recorded walk and the scored result.</li>
+      <li>A test: the same command for three households must give different picks.</li>
+      <li>A README section with before and after, and every Qloo call logged like the Nemotron calls.</li>
+    </ul>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap"><svg viewBox="0 0 120 120" aria-hidden="true"><use href="#duck-side"/></svg><p>Work in progress for the Qloo Agentic Hackathon. Code: <a href="https://github.com/laughtt/house-twin-qloo">github.com/laughtt/house-twin-qloo</a> (Apache-2.0). House Twin itself: <a href="https://nebius.adtomic.co">nebius.adtomic.co</a>. Scores, places and moods here are illustrative; the build replaces them with live Qloo calls. Floor plan: House Twin's sample home. Robot: Pollen's Microduck, simulated.</p></div>
+</footer>
+
+<script>
+const H={"rooms":[{"name":"kitchen","label":"Kitchen","poly":[[0.1,-0.15],[0.1,-0.05],[0.55,0.3],[0.55,0.85],[0.35,1.25],[0.45,1.55],[0.4,1.7],[0.5,1.8],[0.45,2.05],[0.55,2.15],[0.55,2.5],[0.1,2.8],[0.1,3.7],[2.5,3.7],[2.6,3.5],[3.45,3.5],[3.45,1.9],[3.1,1.55],[2.7,1.7],[2.65,1.65],[2.9,1.4],[2.85,1.3],[2.35,1.3],[2.2,0.85],[2.05,0.65],[2.1,0.5],[2.75,0.55],[2.7,0.4],[2.8,0.35],[2.8,-0.15]]},{"name":"living_room","label":"Living room","poly":[[0.1,3.75],[0.1,4.35],[0.25,4.45],[0.35,4.35],[0.4,4.4],[0.3,4.6],[0.4,4.7],[0.35,4.75],[0.55,4.85],[0.6,4.8],[0.65,4.9],[0.8,4.75],[0.75,4.65],[0.85,4.45],[1.05,4.3],[1.1,4.35],[1.0,4.45],[1.0,4.7],[1.15,4.8],[1.05,4.9],[1.15,5.0],[1.1,5.1],[1.45,5.05],[1.7,5.15],[1.3,5.2],[1.15,5.3],[1.05,5.25],[0.95,5.4],[0.85,5.3],[0.6,5.65],[0.5,5.5],[0.55,5.45],[0.4,5.4],[0.5,5.5],[0.35,5.6],[0.45,5.7],[0.4,5.8],[0.45,5.75],[0.5,5.85],[0.3,6.0],[0.5,6.2],[0.35,6.35],[0.4,6.45],[0.3,6.5],[0.45,6.6],[0.5,6.5],[0.55,6.6],[0.6,6.5],[0.65,6.6],[4.65,6.6],[4.65,6.15],[4.9,5.85],[5.35,5.85],[5.45,5.95],[5.55,6.3],[5.85,6.35],[6.0,6.25],[6.75,6.3],[6.85,6.25],[6.9,5.95],[7.2,6.6],[7.85,6.6],[7.85,3.55],[2.6,3.55],[2.5,3.75]]},{"name":"hallway","label":"Hallway","poly":[[3.7,3.3],[4.45,3.3],[4.45,3.2],[4.95,3.2],[4.95,0.75],[3.7,0.75]]},{"name":"bedroom","label":"Bedroom","poly":[[5.1,3.3],[7.6,3.3],[7.85,3.3],[7.85,0.75],[5.1,0.75]]}],"walls":[[3.7,3.38,3.91,3.38],[4.79,3.33,4.95,3.33],[5.1,3.38,7.6,3.38],[3.62,1.6,3.62,3.3],[5.03,0.75,5.03,1.61],[5.03,2.49,5.03,3.2],[0.45,0.0,0.45,2.7],[0.0,2.7,0.45,2.7],[0.0,2.7,0.0,6.7],[0.0,6.7,4.7,6.7],[4.7,6.7,5.55,6.7],[5.55,6.7,7.1,6.7],[7.1,6.7,7.95,6.7],[7.95,3.45,7.95,6.7],[3.55,3.45,3.91,3.45],[4.79,3.45,5.1,3.45],[3.55,3.3,3.55,3.45],[2.75,1.6,3.55,1.6],[2.75,0.0,2.75,1.6],[0.45,0.0,2.75,0.0],[3.7,0.75,4.0,0.75],[4.7,0.75,4.95,0.75],[3.7,0.75,3.7,1.6],[7.6,3.3,7.85,3.3],[7.85,0.75,7.85,3.3],[5.1,0.75,7.85,0.75],[5.1,3.2,5.1,3.3]],"doors":[{"c":[4.35,3.52],"w":0.88,"axis":1},{"c":[5.03,2.05],"w":0.88,"axis":0}],"objects":[{"label":"dining table","c":[1.68,4.83],"s":[0.95,0.65]},{"label":"sofa","c":[6.15,6.1],"s":[1.1,0.4]},{"label":"counter","c":[6.65,6.1],"s":[0.5,0.4]},{"label":"bed","c":[6.78,2.33],"s":[1.15,1.95]},{"label":"seat","c":[7.6,1.95],"s":[0.5,1.2]}]};
+const S=100, NS='http://www.w3.org/2000/svg';
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const wait=ms=>new Promise(r=>setTimeout(r,reduce?0:ms));
+const $=s=>document.querySelector(s);
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);parent&&parent.appendChild(e);return e}
+
+const LABELS={kitchen:[1.5,1.95],living_room:[3.3,5.75],hallway:[4.33,2.15],bedroom:[5.95,1.35]};
+function drawPlan(svg){
+  const defs=el('defs',{},svg);
+  const pat=el('pattern',{id:svg.id+'-grid',width:50,height:50,patternUnits:'userSpaceOnUse'},defs);
+  el('path',{d:'M50 0H0V50',fill:'none',stroke:'var(--grid)','stroke-width':1.5},pat);
+  el('rect',{x:-40,y:-40,width:880,height:780,fill:`url(#${svg.id}-grid)`},svg);
+  const rooms={};
+  H.rooms.forEach(r=>rooms[r.name]=el('path',{class:'room',d:'M'+r.poly.map(p=>p[0]*S+' '+p[1]*S).join('L')+'Z'},svg));
+  el('path',{class:'beam',d:'M560 380 L670 380 L760 600 L470 600Z'},svg);
+  H.objects.forEach(o=>{
+    el('rect',{class:'obj',x:(o.c[0]-o.s[0]/2)*S,y:(o.c[1]-o.s[1]/2)*S,width:o.s[0]*S,height:o.s[1]*S,rx:6},svg);
+  });
+  const tv=el('rect',{class:'tv',x:565,y:362,width:100,height:12,rx:3},svg);
+  el('text',{class:'olbl in-living',x:615,y:398},svg).textContent='TV';
+  el('text',{class:'olbl in-living',x:615,y:648},svg).textContent='sofa';
+  el('text',{class:'olbl',x:678,y:238},svg).textContent='bed';
+  el('text',{class:'olbl in-living',x:168,y:488},svg).textContent='table';
+  H.walls.forEach(w=>el('line',{class:'wall',x1:w[0]*S,y1:w[1]*S,x2:w[2]*S,y2:w[3]*S},svg));
+  H.doors.forEach(d=>{
+    const [cx,cy]=d.c.map(v=>v*S), w=d.w*S;
+    if(d.axis===1) el('path',{class:'door',d:`M${cx-w/2} ${cy-8} V${cy-8+w} M${cx+w/2} ${cy-8} A${w} ${w} 0 0 1 ${cx-w/2} ${cy-8+w}`},svg);
+    else el('path',{class:'door',d:`M${cx-8} ${cy-w/2} H${cx-8+w} M${cx-8} ${cy+w/2} A${w} ${w} 0 0 0 ${cx-8+w} ${cy-w/2}`},svg);
+  });
+  el('path',{class:'ent',d:'M400 75 V20 M470 75 V20 M400 20 H470'},svg);
+  el('text',{class:'olbl',x:435,y:10},svg).textContent='front door';
+  H.rooms.forEach(r=>{const [x,y]=LABELS[r.name];el('text',{class:'lbl'+(r.name==='living_room'?' in-living':''),x:x*S,y:y*S},svg).textContent=r.label});
+  return {rooms,tv,beam:svg.querySelector('.beam')};
+}
+
+function makeDuck(svg){
+  const g=el('g',{},svg), b=el('g',{},g);
+  el('ellipse',{cx:0,cy:0,rx:26,ry:20,fill:'var(--duck)',stroke:'var(--ink)','stroke-width':3},b);
+  el('path',{d:'M-24 -6 L-36 0 L-24 6',fill:'var(--duck)',stroke:'var(--ink)','stroke-width':3,'stroke-linejoin':'round'},b);
+  el('circle',{cx:18,cy:0,r:14,fill:'var(--duck)',stroke:'var(--ink)','stroke-width':3},b);
+  el('path',{d:'M29 -6 L44 0 L29 6Z',fill:'var(--beak)',stroke:'var(--ink)','stroke-width':2.5,'stroke-linejoin':'round'},b);
+  el('circle',{cx:22,cy:-6,r:3,fill:'var(--ink)'},b);el('circle',{cx:22,cy:6,r:3,fill:'var(--ink)'},b);
+  return {g,b,set(x,y,a,w=0){g.setAttribute('transform',`translate(${x} ${y}) rotate(${a})`);b.setAttribute('transform',`rotate(${w})`)}};
+}
+
+/* demo data */
+const FILMS=[{id:'coco',t:'Coco',y:2017},{id:'padd',t:'Paddington 2',y:2017},{id:'pb',t:'The Princess Bride',y:1987},{id:'bttf',t:'Back to the Future',y:1985},{id:'sa',t:'Spirited Away',y:2001},{id:'mm',t:'Mamma Mia!',y:2008},{id:'inc',t:'The Incredibles',y:2004}];
+const PEOPLE=[
+  {n:'Rosa',age:78,c:'var(--p1)',opts:['Pedro Infante films','Columbo','Buena Vista Social Club'],sel:0,
+   base:{coco:82,padd:70,pb:74,bttf:68,sa:55,mm:80,inc:60},boost:[{coco:10,mm:2},{pb:8,bttf:6,padd:5},{coco:6,mm:8}]},
+  {n:'Ana',age:46,c:'var(--p2)',opts:['The Office','Gilmore Girls','Wes Anderson films'],sel:0,
+   base:{coco:66,padd:84,pb:80,bttf:76,sa:82,mm:70,inc:72},boost:[{padd:6,pb:6,inc:4},{mm:10,pb:4},{padd:10,sa:5}]},
+  {n:'Leo',age:12,c:'var(--p3)',opts:['Minecraft','Spider-Verse','Pokémon'],sel:1,
+   base:{coco:74,padd:72,pb:52,bttf:79,sa:76,mm:38,inc:84},boost:[{bttf:5,sa:6,inc:3},{coco:8,bttf:6,inc:6},{sa:12,padd:3}]}
+];
+const BASELINE={t:'Frozen',y:2013,s:[48,55,70]};
+const score=(p,f)=>Math.min(99,p.base[f]+(p.boost[p.sel][f]||0));
+function ranked(){
+  return FILMS.map(f=>{const s=PEOPLE.map(p=>score(p,f.id));return {...f,s,min:Math.min(...s)}}).sort((a,b)=>b.min-a.min);
+}
+function barsHTML(s){return PEOPLE.map((p,i)=>`<div class="bar"><span>${p.n}</span><i><u style="background:${p.c}" data-w="${s[i]}"></u></i><span>${s[i]}</span></div>`).join('')}
+function growBars(root){requestAnimationFrame(()=>requestAnimationFrame(()=>root.querySelectorAll('u[data-w]').forEach(u=>u.style.width=u.dataset.w+'%')))}
+
+function flip(container,mutate){
+  const kids=[...container.children], before=new Map(kids.map(k=>[k,k.getBoundingClientRect().top]));
+  mutate();
+  if(reduce)return;
+  [...container.children].forEach(k=>{
+    const b=before.get(k); if(b==null)return;
+    const d=b-k.getBoundingClientRect().top; if(!d)return;
+    k.style.transition='none';k.style.transform=`translateY(${d}px)`;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{k.style.transition='transform .6s cubic-bezier(.2,.8,.2,1)';k.style.transform=''}));
+  });
+}
+
+/* hero */
+const p1=drawPlan($('#plan1'));
+const trail=el('path',{class:'trail',d:''},$('#plan1'));
+const duck=makeDuck($('#plan1'));
+const PATH=[[4.3,1.15],[4.3,2.9],[4.35,3.6],[4.75,4.45],[5.55,5.15],[6.1,5.45]].map(p=>[p[0]*S,p[1]*S]);
+duck.set(PATH[0][0],PATH[0][1],90);
+function walk(dur){
+  const seg=[];let total=0;
+  for(let i=1;i<PATH.length;i++){const l=Math.hypot(PATH[i][0]-PATH[i-1][0],PATH[i][1]-PATH[i-1][1]);seg.push(l);total+=l}
+  return new Promise(res=>{
+    if(reduce){const e=PATH[PATH.length-1];duck.set(e[0],e[1],60);trail.setAttribute('d','M'+PATH.join('L'));return res()}
+    const t0=performance.now();
+    (function step(now){
+      const k=Math.min(1,(now-t0)/dur);let d=k*total,i=0;
+      while(i<seg.length-1&&d>seg[i]){d-=seg[i];i++}
+      const a=PATH[i],b=PATH[i+1],u=Math.min(1,d/seg[i]);
+      const x=a[0]+(b[0]-a[0])*u,y=a[1]+(b[1]-a[1])*u;
+      const ang=Math.atan2(b[1]-a[1],b[0]-a[0])*180/Math.PI;
+      duck.set(x,y,ang,k<1?Math.sin(now/70)*9:0);
+      trail.setAttribute('d','M'+PATH.slice(0,i+1).join('L')+`L${x} ${y}`);
+      k<1?requestAnimationFrame(step):res();
+    })(t0);
+  });
+}
+let run=0;
+async function play(){
+  const id=++run, say=$('#say'), es=say.querySelector('.es'), lis=[...$('#trace').children];
+  say.classList.remove('done');lis.forEach(l=>l.classList.remove('on'));$('#pick').classList.remove('on');
+  p1.rooms.living_room.classList.remove('lit');$('#plan1').classList.remove('evening');p1.tv.classList.remove('on');p1.beam.classList.remove('on');
+  duck.set(PATH[0][0],PATH[0][1],90);trail.setAttribute('d','');
+  const line='Busca algo que podamos ver todos esta noche.';
+  es.innerHTML='<span class="caret"></span>';
+  for(let i=1;i<=line.length;i++){if(id!==run)return;es.innerHTML=line.slice(0,i)+'<span class="caret"></span>';await wait(32)}
+  es.textContent=line;say.classList.add('done');
+  for(const li of lis.slice(0,2)){await wait(450);if(id!==run)return;li.classList.add('on')}
+  const walking=walk(4200);
+  for(const li of lis.slice(2)){await wait(900);if(id!==run)return;li.classList.add('on')}
+  await walking;if(id!==run)return;
+  p1.rooms.living_room.classList.add('lit');$('#plan1').classList.add('evening');p1.tv.classList.add('on');p1.beam.classList.add('on');
+  await wait(500);$('#pick').classList.add('on');growBars($('#pick'));
+}
+function updatePick(){
+  const best=ranked()[0];
+  $('#pick-title').textContent=best.t;$('#trace-pick').textContent=`${best.t}, lowest score ${best.min}`;
+  $('#pick-bars').innerHTML=barsHTML(best.s);
+  if($('#pick').classList.contains('on'))growBars($('#pick'));
+}
+$('#replay').onclick=play;
+
+/* demo 1 */
+$('#people').innerHTML=PEOPLE.map((p,i)=>`<div class="person" style="--c:${p.c}"><h3>${p.n}<span>age ${p.age}</span></h3><p>One favourite, tap to swap</p><div class="chips">${p.opts.map((o,j)=>`<button type="button" class="chip" data-p="${i}" data-o="${j}" aria-pressed="${j===p.sel}">${o}</button>`).join('')}</div></div>`).join('');
+const board=$('#board');
+FILMS.forEach(f=>{const r=document.createElement('div');r.className='row';r.dataset.id=f.id;r.innerHTML=`<div class="t">${f.t}<small>${f.y}</small></div><div class="bars"></div><div class="min"></div>`;board.appendChild(r)});
+const baseRow=document.createElement('div');baseRow.className='row base';
+baseRow.innerHTML=`<div class="t">${BASELINE.t}<small>Generic family-night pick, no scores</small></div><div class="bars">${barsHTML(BASELINE.s)}</div><div class="min">${Math.min(...BASELINE.s)}<small>lowest</small></div>`;
+function renderBoard(){
+  const list=ranked();
+  flip(board,()=>{
+    list.forEach((f,i)=>{
+      const r=board.querySelector(`[data-id="${f.id}"]`);
+      r.classList.toggle('best',i===0);
+      const bars=r.querySelector('.bars');
+      if(!bars.children.length)bars.innerHTML=barsHTML(f.s);
+      else bars.querySelectorAll('.bar').forEach((b,k)=>{b.querySelector('u').style.width=f.s[k]+'%';b.lastElementChild.textContent=f.s[k]});
+      r.querySelector('.min').innerHTML=`${f.min}<small>lowest</small>`;
+      board.appendChild(r);
+    });
+    board.appendChild(baseRow);
+  });
+  growBars(board);updatePick();
+}
+$('#people').addEventListener('click',e=>{
+  const b=e.target.closest('.chip');if(!b)return;
+  const p=PEOPLE[b.dataset.p];p.sel=+b.dataset.o;
+  b.parentElement.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c===b));
+  renderBoard();
+});
+renderBoard();
+
+/* demo 2 */
+const PLACES=[
+  {n:'Panadería Sol',k:'Bakery',d:120,a:200,f:41},{n:'Burger Lab',k:'Burgers',d:210,a:320,f:33},
+  {n:'Sushi Go',k:'Sushi',d:300,a:60,f:46},{n:'Café Lucero',k:'Café with live bolero',d:400,a:140,f:92},
+  {n:'Green Bowl',k:'Salads',d:520,a:250,f:52},{n:'La Fonda de Tere',k:'Home-style Mexican',d:650,a:20,f:88},
+  {n:'Bar Habana',k:'Cuban food and son',d:900,a:285,f:85}
+];
+const msvg=$('#mapsvg'),C=[220,200],R=d=>d/1000*175;
+['M0 120 C120 130 300 100 440 140','M0 290 C150 270 280 310 440 280','M120 0 C130 140 100 260 140 400','M330 0 C310 120 350 280 320 400','M40 0 L200 400'].forEach(d=>el('path',{class:'street',d},msvg));
+[[250,'250 m'],[500,'500 m'],[1000,'1 km']].forEach(([d,t])=>{el('circle',{class:'ring',cx:C[0],cy:C[1],r:R(d)},msvg);el('text',{class:'rl',x:C[0]+R(d)*.71+4,y:C[1]-R(d)*.71},msvg).textContent=t});
+const pin=el('g',{transform:`translate(${C[0]} ${C[1]})`},msvg);
+el('path',{d:'M-14 2 L0 -12 L14 2 V14 H-14Z',fill:'var(--duck)',stroke:'var(--ink)','stroke-width':2.5,'stroke-linejoin':'round'},pin);
+el('text',{class:'rl',x:0,y:30,'text-anchor':'middle'},pin).textContent='home';
+PLACES.forEach(p=>{
+  const x=C[0]+Math.cos(p.a*Math.PI/180)*R(p.d),y=C[1]+Math.sin(p.a*Math.PI/180)*R(p.d);
+  p.g=el('g',{class:'pl'},msvg);
+  el('circle',{cx:x,cy:y,r:6},p.g);
+  el('text',{x:x+(x>C[0]?12:-12),y:y+4,'text-anchor':x>C[0]?'start':'end'},p.g).textContent=p.n;
+});
+const plist=$('#places');
+PLACES.forEach(p=>{p.li=document.createElement('li');p.li.innerHTML=`<span class="n"></span><span class="nm">${p.n}<small>${p.k}</small></span><span class="d">${p.d} m</span><i><u style="width:${p.f}%"></u></i>`;plist.appendChild(p.li)});
+function sortPlaces(mode){
+  const order=[...PLACES].sort(mode==='fit'?(a,b)=>b.f-a.f:(a,b)=>a.d-b.d);
+  flip(plist,()=>order.forEach((p,i)=>{p.li.querySelector('.n').textContent=i+1;plist.appendChild(p.li)}));
+  $('#map').classList.toggle('near',mode==='near');
+  order.forEach((p,i)=>{
+    p.g.classList.toggle('top',mode==='fit'&&i<3);p.g.classList.toggle('close',mode==='near'&&i<3);
+    p.g.querySelector('circle').setAttribute('r',mode==='fit'?4+p.f/9:6);
+  });
+}
+document.querySelector('#door .seg').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  b.parentElement.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  sortPlaces(b.dataset.mode);
+});
+sortPlaces('near');
+
+/* demo 3 */
+const p2=drawPlan($('#plan2')), duck2=makeDuck($('#plan2'));
+duck2.g.style.transition='transform 1.2s cubic-bezier(.4,0,.2,1)';
+const SLOTS=[
+  {k:'Morning',room:'kitchen',at:[260,250],light:'#FFE7A3',ln:'Warm sunrise yellow',tags:['upbeat','sunny','nostalgic'],play:'Buena Vista Social Club, "Chan Chan"'},
+  {k:'Afternoon',room:'living_room',at:[300,560],light:'#CDEBE4',ln:'Soft daylight',tags:['relaxed','sentimental'],play:'Pedro Infante, "Cien años"'},
+  {k:'Evening',room:'living_room',at:[610,540],light:'#FFC56B',ln:'Amber, 60 % brightness',tags:['cozy','family','feel-good'],play:'Paddington 2 on the TV'},
+  {k:'Night',room:'bedroom',at:[600,250],light:'#F2A65A',ln:'Low amber, 15 % brightness',tags:['quiet','slow','romantic'],play:'Omara Portuondo, "Veinte años"'}
+];
+const slots=$('#slots');
+slots.innerHTML=SLOTS.map((s,i)=>`<button type="button" data-i="${i}" aria-pressed="${i===0}">${s.k}</button>`).join('');
+function setSlot(i){
+  const s=SLOTS[i];
+  Object.entries(p2.rooms).forEach(([n,r])=>{r.style.fill=n===s.room?s.light:'var(--room-dim)'});
+  duck2.g.style.transform=`translate(${s.at[0]}px,${s.at[1]}px)`;
+  $('#plan2').classList.toggle('evening',s.room==='living_room');
+  $('#mood-room').textContent=H.rooms.find(r=>r.name===s.room).label;
+  $('#mood-tags').innerHTML=s.tags.map(t=>`<span>${t}</span>`).join('');
+  $('#mood-sw').style.setProperty('--sw',s.light);$('#mood-light').textContent=s.ln;$('#mood-play').textContent=s.play;
+  slots.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.i===i));
+}
+slots.addEventListener('click',e=>{const b=e.target.closest('button');b&&setSlot(+b.dataset.i)});
+setSlot(0);
+
+/* demo 4 */
+const LADDER=[
+  {fam:'Columbo',adj:'Murder, She Wrote',neu:'Only Murders in the Building',why:'People who love Columbo over-index on cosy mysteries with a sharp older detective.'},
+  {fam:'Pedro Infante films',adj:'Cantinflas comedies',neu:'Roma',why:'Fans of golden-age Mexican cinema score high on black-and-white family dramas.'},
+  {fam:'Buena Vista Social Club',adj:'Omara Portuondo',neu:'Natalia Lafourcade, "Musas"',why:'Listeners of classic son and bolero lean towards new artists who record the old songbook.'}
+];
+let li=0;
+function renderLadder(){
+  const L=LADDER[li%LADDER.length];
+  $('#ladder').innerHTML=`<li data-step="1"><small>She already loves</small><b>${L.fam}</b></li><li data-step="2"><small>One step out</small><b>${L.adj}</b></li><li data-step="3" class="now"><small>Today's new thing</small><b>${L.neu}</b></li>`;
+  $('#duck-say').textContent=`Duck, on the check-in round: "¿Probamos ${L.neu}? ${L.why}"`;
+}
+$('#yes').onclick=()=>{
+  const t=LADDER[li%LADDER.length].neu, prof=$('#profile');
+  if(![...prof.children].some(s=>s.textContent===t)){const s=document.createElement('span');s.textContent=t;prof.appendChild(s)}
+  li++;renderLadder();
+};
+$('#no').onclick=()=>{li++;renderLadder()};
+renderLadder();
+
+/* theme */
+const root=document.documentElement, tb=$('#theme');
+const isDark=()=>root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+const label=()=>tb.textContent=isDark()?'Light mode':'Dark mode';
+try{const t=localStorage.getItem('duckhost-theme');if(t)root.dataset.theme=t}catch(e){}
+label();
+tb.onclick=()=>{root.dataset.theme=isDark()?'light':'dark';try{localStorage.setItem('duckhost-theme',root.dataset.theme)}catch(e){}label()};
+
+updatePick();
+const io=new IntersectionObserver(es=>{if(es[0].isIntersecting){io.disconnect();play()}},{threshold:.1});
+io.observe($('.hero'));
+</script>
+</body>
+</html>

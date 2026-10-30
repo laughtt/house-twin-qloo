@@ -1,5 +1,11 @@
 # House Twin Patrol
 
+> **Qloo Agentic Hackathon (Duck Host), work in progress.** This repo adds Qloo to House Twin, an existing agent:
+> before the duck acts, it asks Qloo what each person in the room will like and shows the score. Live page:
+> **[qloo.adtomic.co](https://qloo.adtomic.co)** (`web/`). Everything before Sep 30 and the Nebius pass is the tag
+> `baseline-nebius`; `git diff baseline-nebius` shows what changed for Qloo. The Qloo key stays on the server, never in
+> this repo or the browser, and no Qloo response data is committed.
+
 **Walk through your home once with an iPhone. A small home robot then knows every room, takes spoken orders in any
 language, and asks you when it isn't sure.**
 
